@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — DataCluster</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap"
+    rel="stylesheet">
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #FFFFFF;
+      --surface: #F8F9FA;
+      --border: #E2E8F0;
+      --accent: #00B4D8;
+      --accent-dim: #00B4D818;
+      --secondary: #7209B7;
+      --text: #0F172A;
+      --muted: #64748B;
+      --error: #DC2626;
+      --success: #00B4D8;
+    }
+
+    body.dark {
+      --bg: #121824;
+      --surface: #1A2332;
+      --border: #2A3344;
+      --accent: #00B4D8;
+      --accent-dim: #00B4D818;
+      --secondary: #7209B7;
+      --text: #E2E8F0;
+      --muted: #8899B0;
+      --error: #EF4444;
+      --success: #00B4D8;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 0.85rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .brand small {
+      font-weight: 400;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .user-chip {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .user-chip strong {
+      color: var(--text);
+    }
+
+    .logout-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 6px;
+      padding: 0.3rem 0.75rem;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-decoration: none;
+    }
+
+    .logout-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    main {
+      flex: 1;
+      padding: 2rem;
+      max-width: 1100px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .upload-zone {
+      background: var(--surface);
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 2.5rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      position: relative;
+      transition: border-color 0.2s, background 0.3s;
+    }
+
+    .upload-zone:hover,
+    .upload-zone.dragover {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .upload-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .upload-zone .icon {
+      font-size: 2rem;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+
+    .upload-zone p {
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .upload-zone p strong {
+      color: var(--accent);
+    }
+
+    .upload-zone .formats {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 0.3rem;
+      opacity: 0.6;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 2rem 0 1rem;
+    }
+
+    .section-header h2 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .section-header .count {
+      font-size: 0.78rem;
+      color: var(--muted);
+      background: var(--surface);
+      padding: 0.2rem 0.6rem;
+      border-radius: 99px;
+      border: 1px solid var(--border);
+    }
+
+    .file-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+
+    .file-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      transition: border-color 0.2s, background 0.3s;
+    }
+
+    .file-card:hover {
+      border-color: var(--accent);
+    }
+
+    .file-card .thumb {
+      width: 100%;
+      height: 180px;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .file-card .thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .file-card .thumb .no-preview {
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    .file-card .info {
+      padding: 0.85rem 1rem;
+    }
+
+    .file-card .info .name {
+      font-weight: 500;
+      font-size: 0.85rem;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .file-card .info .meta {
+      display: flex;
+      gap: 0.6rem;
+      margin-top: 0.35rem;
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    .file-card .info .meta span {
+      background: var(--bg);
+      padding: 0.1rem 0.45rem;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+
+    .file-card .actions {
+      display: flex;
+      border-top: 1px solid var(--border);
+    }
+
+    .file-card .actions a,
+    .file-card .actions button {
+      flex: 1;
+      text-align: center;
+      padding: 0.5rem;
+      font-size: 0.76rem;
+      font-family: 'Inter', sans-serif;
+      text-decoration: none;
+      color: var(--muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .file-card .actions a:hover,
+    .file-card .actions button:hover {
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .file-card .actions .delete-btn:hover {
+      color: var(--error);
+      background: #DC262610;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 2rem;
+      color: var(--muted);
+    }
+
+    .empty-state .icon {
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+      opacity: 0.4;
+    }
+
+    .empty-state p {
+      font-size: 0.85rem;
+    }
+
+    .theme-toggle {
+      position: fixed;
+      bottom: 1.25rem;
+      right: 1.25rem;
+      z-index: 10;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      width: 38px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 1.1rem;
+      box-shadow: 0 2px 8px #00000012;
+    }
+
+    .theme-toggle:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .toast {
+      position: fixed;
+      top: 1.25rem;
+      right: 1.25rem;
+      z-index: 20;
+      background: var(--error);
+      color: #fff;
+      padding: 0.7rem 1.2rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      opacity: 0;
+      transform: translateY(-10px);
+      transition: all 0.25s;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .upload-progress {
+      display: none;
+      margin-top: 0.75rem;
+      height: 4px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .upload-progress.active {
+      display: block;
+    }
+
+    .upload-progress .bar {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      border-radius: 99px;
+      transition: width 0.3s;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <span class="brand">DataCluster <small>· Sistema de Diagnóstico Unificado</small></span>
+    <div class="header-right">
+      <div class="user-chip">
+        <span><strong>{{ session.user }}</strong></span>
+        <a href="/logout" class="logout-btn">Salir</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+
+    <form class="upload-zone" id="uploadForm" method="POST" action="/upload" enctype="multipart/form-data">
+      <input type="file" name="file" accept=".dcm,.dicom,.png,.jpg,.jpeg,.bmp,.gif,.webp,.tiff,.tif" />
+      <div class="icon">📋</div>
+      <p>Arrastra un archivo <strong>DICOM</strong> o una <strong>imagen</strong> o haz clic para seleccionar</p>
+      <p class="formats">Soporta: .dcm .dicom · .png .jpg .jpeg .bmp .gif .webp</p>
+      <div class="upload-progress" id="uploadProgress">
+        <div class="bar" id="progressBar"></div>
+      </div>
+    </form>
+
+    <div class="section-header">
+      <h2>Estudios Cargados</h2>
+      <span class="count">{{ files|length }} archivo(s)</span>
+    </div>
+
+    {% if files %}
+    <div class="file-grid">
+      {% for f in files %}
+      <div class="file-card">
+        <a href="{{ url_for('view_file', file_id=f.id) }}" style="text-decoration:none;color:inherit;">
+          <div class="thumb">
+            {% if f.has_preview %}
+            <img src="{{ url_for('serve_media', file_id=f.id, img_type='original') }}" alt="Preview {{ f.stem }}"
+              loading="lazy" />
+            {% else %}
+            <span class="no-preview">Metadatos Estructurales</span>
+            {% endif %}
+          </div>
+          <div class="info">
+            <div class="name">{{ f.original_name }}</div>
+            <div class="meta">
+              {% if f.is_image %}
+              <span>Imagen</span>
+              {% else %}
+              {% if f.modality and f.modality != "N/A" %}<span>{{ f.modality }}</span>{% endif %}
+              {% if f.study_date and f.study_date != "N/A" %}<span>{{ f.study_date }}</span>{% endif %}
+              <span>{{ f.patient_name }}</span>
+              {% endif %}
+            </div>
+          </div>
+        </a>
+        <div class="actions">
+          <a href="{{ url_for('view_file', file_id=f.id) }}">Ver Estudio</a>
+          <a href="{{ url_for('download_file', file_id=f.id) }}" class="download-btn">Descargar</a>
+          <form method="POST" action="{{ url_for('delete_file', file_id=f.id) }}" style="flex:1;display:flex;"
+            onsubmit="return confirm('¿Eliminar permanentemente este registro?');">
+            <button type="submit" class="delete-btn">Eliminar</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="icon">📂</div>
+      <p>No hay archivos cargados todavía. Arrastra un DICOM o imagen arriba para comenzar.</p>
+    </div>
+    {% endif %}
+
+  </main>
+
+  <button class="theme-toggle" id="themeToggle">🌙</button>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // Manejo de Tema
+    const toggle = document.getElementById('themeToggle');
+    if (localStorage.getItem('theme') === 'dark') {
+      document.body.classList.add('dark');
+      toggle.textContent = '☀️';
+    }
+    toggle.addEventListener('click', () => {
+      document.body.classList.toggle('dark');
+      const isDark = document.body.classList.contains('dark');
+      toggle.textContent = isDark ? '☀️' : '🌙';
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    });
+
+    // Animación de Carga
+    const form = document.getElementById('uploadForm');
+    const fileInput = form.querySelector('input[type="file"]');
+    const progress = document.getElementById('uploadProgress');
+    const bar = document.getElementById('progressBar');
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length) {
+        progress.classList.add('active');
+        bar.style.width = '75%';
+        form.submit();
+      }
+    });
+
+    form.addEventListener('dragover', (e) => { e.preventDefault(); form.classList.add('dragover'); });
+    form.addEventListener('dragleave', () => form.classList.remove('dragover'));
+    form.addEventListener('drop', () => form.classList.remove('dragover'));
+  </script>
+</body>
+
+</html>

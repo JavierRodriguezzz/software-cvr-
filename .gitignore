@@ -1,0 +1,12 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+test_stdout.txt
+test_stderr.txt
+uploads/*
+previews/*
+output_processed/*
+cervical_uploads/
+cervical_output/
+.env.local

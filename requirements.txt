@@ -1,0 +1,12 @@
+flask>=3.0.0
+python-dotenv>=1.0.0
+pydicom>=3.0.0
+Pillow>=11.0.0
+numpy>=2.0.0
+opencv-python-headless>=4.10.0
+torch>=2.0.0
+ultralytics>=8.0.0
+pylibjpeg>=2.1.0
+pylibjpeg-libjpeg>=2.4.0
+python-gdcm>=3.0.10
+gunicorn>=22.0.0

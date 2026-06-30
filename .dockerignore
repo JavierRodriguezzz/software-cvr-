@@ -1,0 +1,15 @@
+.env
+.env.*
+.venv/
+__pycache__/
+*.pyc
+uploads/
+previews/
+output_processed/
+cervical_uploads/
+cervical_output/
+test_stdout.txt
+test_stderr.txt
+.git/
+.agents/
+.codex/
