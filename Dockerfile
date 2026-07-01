@@ -14,8 +14,9 @@ RUN if [ -f /etc/apt/sources.list.d/debian.sources ]; then sed -i 's|http://deb.
         libglib2.0-0 \
         libgomp1 \
         libjpeg62-turbo \
+        libxcb1 \
+        libgl1-mesa-glx \
     && rm -rf /var/lib/apt/lists/*
-
 COPY requirements.txt .
 RUN pip install --upgrade pip \
     && pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.0.0" "torchvision>=0.15.0" \
