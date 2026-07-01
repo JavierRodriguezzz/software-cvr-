@@ -9,5 +9,4 @@ torchvision>=0.15.0
 ultralytics>=8.0.0
 pylibjpeg>=2.1.0
 pylibjpeg-libjpeg>=2.4.0
-python-gdcm>=3.0.10
 gunicorn>=22.0.0

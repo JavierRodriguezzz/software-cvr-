@@ -1,4 +1,3 @@
-# Cambiamos a una imagen que ya incluye las dependencias del sistema necesarias para OpenCV y PyTorch
 FROM continuumio/miniconda3:latest
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -8,7 +7,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Instalamos las librerías necesarias de Python directamente sin usar apt-get
+# Dependencias del sistema para OpenCV, pylibjpeg, numpy
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libgomp1 \
+    libjpeg62-turbo \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt .
 RUN pip install --upgrade pip \
     && pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.0.0" "torchvision>=0.15.0" \
