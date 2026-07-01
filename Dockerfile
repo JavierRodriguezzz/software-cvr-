@@ -7,7 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN conda install -y -c conda-forge opencv-headless libjpeg-turbo && conda clean -afy
+RUN conda install -y -c conda-forge opencv-headless=4.10.0 && conda clean -afy
 
 COPY requirements.txt .
 RUN pip install --upgrade pip \
