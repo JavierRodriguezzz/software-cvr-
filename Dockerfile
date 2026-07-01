@@ -1,4 +1,4 @@
-FROM continuumio/miniconda3:23.11.0-0
+FROM continuumio/miniconda3:latest
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -7,6 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+RUN conda install -y python=3.11 && conda clean -afy
 RUN conda install -y -c conda-forge opencv-headless=4.10.0 && conda clean -afy
 
 COPY requirements.txt .
