@@ -1,10 +1,14 @@
-FROM python:3.11-slim
+FROM continuumio/miniconda3:latest
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    ENV=production
+    ENV=production \
+    LD_LIBRARY_PATH=/opt/conda/lib
 
 WORKDIR /app
+
+# Install system libs via conda (pip's opencv-python-headless needs them at runtime)
+RUN conda install -y -c conda-forge mesalib xorg-libxcb glib libjpeg-turbo && conda clean -afy
 
 COPY requirements.txt .
 RUN pip install --upgrade pip \
