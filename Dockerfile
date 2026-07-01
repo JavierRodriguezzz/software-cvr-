@@ -12,7 +12,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --upgrade pip \
     && pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.0.0" "torchvision>=0.15.0" \
-    && pip install -r requirements.txt
+    && pip install -r requirements.txt \
+    && pip list
 
 COPY app.py wsgi.py ./
 COPY templates ./templates
