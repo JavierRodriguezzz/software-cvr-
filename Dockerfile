@@ -1,21 +1,13 @@
-FROM python:3.11-slim
+FROM continuumio/miniconda3:latest
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
     ENV=production
 
 WORKDIR /app
 
-RUN if [ -f /etc/apt/sources.list.d/debian.sources ]; then sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources; fi \
-    && if [ -f /etc/apt/sources.list ]; then sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list; fi \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends \
-        libgl1-mesa-glx \
-        libglib2.0-0 \
-        libgomp1 \
-        libjpeg62-turbo \
-    && rm -rf /var/lib/apt/lists/*
+# Install opencv-headless via conda (handles system deps: libGL, libglib, etc.) without apt
+RUN conda install -y -c conda-forge opencv-headless=4.10.0 libjpeg-turbo && conda clean -afy
 
 COPY requirements.txt .
 RUN pip install --upgrade pip \
