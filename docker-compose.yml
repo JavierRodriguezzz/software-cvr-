@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "${APP_PORT:-4501}:4501"
+      - "${APP_PORT:-4501}:5000"
     environment:
       ENV: production
       SECRET_KEY: ${SECRET_KEY:-default-dev-key-not-for-production}
