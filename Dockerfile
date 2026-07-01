@@ -2,12 +2,12 @@ FROM continuumio/miniconda3:latest
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    ENV=production
+    ENV=production \
+    LD_LIBRARY_PATH=/opt/conda/lib
 
 WORKDIR /app
 
-# Install opencv-headless via conda (handles system deps: libGL, libglib, etc.) without apt
-RUN conda install -y -c conda-forge opencv-headless=4.10.0 libjpeg-turbo && conda clean -afy
+RUN conda install -y -c conda-forge opencv-headless libglvnd-glx libjpeg-turbo && conda clean -afy
 
 COPY requirements.txt .
 RUN pip install --upgrade pip \
