@@ -1,4 +1,5 @@
-FROM python:3.11-slim
+# Cambiamos a una imagen que ya incluye las dependencias del sistema necesarias para OpenCV y PyTorch
+FROM continuumio/miniconda3:latest
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -7,8 +8,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# ELIMINAMOS LA LÍNEA DE APT-GET COMPLETAMENTE
-
+# Instalamos las librerías necesarias de Python directamente sin usar apt-get
 COPY requirements.txt .
 RUN pip install --upgrade pip \
     && pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.0.0" "torchvision>=0.15.0" \
