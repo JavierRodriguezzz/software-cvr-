@@ -1,14 +1,10 @@
-FROM continuumio/miniconda3:latest
+FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    ENV=production \
-    LD_LIBRARY_PATH=/opt/conda/lib
+    ENV=production
 
 WORKDIR /app
-
-RUN conda install -y python=3.11 && conda clean -afy
-RUN conda install -y -c conda-forge opencv-headless=4.10.0 && conda clean -afy
 
 COPY requirements.txt .
 RUN pip install --upgrade pip \
