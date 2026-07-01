@@ -7,15 +7,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN if [ -f /etc/apt/sources.list.d/debian.sources ]; then sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list.d/debian.sources; fi \
-    && if [ -f /etc/apt/sources.list ]; then sed -i 's|http://deb.debian.org|https://deb.debian.org|g' /etc/apt/sources.list; fi \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends \
-        libglib2.0-0 \
-        libgomp1 \
-        libjpeg62-turbo \
-        libxcb1 \
-        libgl1-mesa-glx \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libglib2.0-0 \
+    libgomp1 \
+    libjpeg62-turbo \
+    libxcb1 \
+    libgl1-mesa-glx \
     && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
 RUN pip install --upgrade pip \
