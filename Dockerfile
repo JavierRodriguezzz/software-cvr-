@@ -7,8 +7,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Install system libs (libGL, libxcb, etc.) without opencv
-RUN apt-get update && apt-get install -y --no-install-recommends libgl1-mesa-glx libglib2.0-0 && rm -rf /var/lib/apt/lists/*
+# Install system libs (libGL, glib, etc.) for OpenCV
+RUN conda install -y -c conda-forge mesa-libgl glib libjpeg-turbo && conda clean -afy
 
 COPY requirements.txt .
 RUN pip install --upgrade pip \
