@@ -16,6 +16,17 @@ RUN pip install --upgrade pip \
 
 COPY . .
 
+# Download actual YOLO model from GitHub LFS (pointer file was copied, replace it)
+RUN python -c "\
+import urllib.request, sys; \
+url = 'https://media.githubusercontent.com/media/JavierRodriguezzz/software-cvr-/main/models/yolo_cervix_best.pt'; \
+print('Downloading YOLO model (~125 MB)...'); \
+urllib.request.urlretrieve(url, 'models/yolo_cervix_best.pt'); \
+print('Download complete. Verifying...'); \
+import zipfile; \
+zipfile.ZipFile('models/yolo_cervix_best.pt'); \
+print('YOLO model verified OK')"
+
 RUN mkdir -p uploads previews output_processed
 
 EXPOSE 5000
