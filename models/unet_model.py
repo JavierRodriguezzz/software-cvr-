@@ -3,6 +3,9 @@ import torch.nn as nn
 import numpy as np
 import cv2
 
+# ==============================================================================
+# 1. TU ARQUITECTURA U-NET (Intacta)
+# ==============================================================================
 class DoubleConv(nn.Module):
     def __init__(self, in_c, out_c):
         super().__init__()

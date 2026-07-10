@@ -372,6 +372,10 @@
         {% if meta.has_result %}
         <button class="tab-btn" data-type="yolo">YOLOv11</button>
         <button class="tab-btn" data-type="unet">U-Net</button>
+        <button class="tab-btn" data-type="spline">Spline</button>
+        {% if meta.measurement_ok %}
+        <button class="tab-btn" data-type="measurement">Medición Canal</button>
+        {% endif %}
         <button class="tab-btn" data-type="comparison">Comparación</button>
         {% endif %}
       </div>
@@ -454,6 +458,54 @@
             {% endif %}
           </td>
         </tr>
+        {% if meta.has_result %}
+        <tr>
+          <td>Medición Canal</td>
+          <td>
+            {% if meta.measurement_ok %}
+            <span class="badge ok">OK</span>
+            {% else %}
+            <span class="badge na" title="{{ meta.measurement_error or 'Labios no detectados' }}">N/A</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% if meta.measurement_ok %}
+        <tr>
+          <td>Longitud Canal</td>
+          <td>{{ meta.cervical_measurement.arc_length_px }} px</td>
+        </tr>
+        {% if meta.cervical_measurement.arc_length_cm %}
+        <tr>
+          <td>Longitud (cm)</td>
+          <td>{{ meta.cervical_measurement.arc_length_cm }} cm</td>
+        </tr>
+        {% endif %}
+        <tr>
+          <td>Coordenadas OI</td>
+          <td>({{ meta.cervical_measurement.oi[0] }}, {{ meta.cervical_measurement.oi[1] }})</td>
+        </tr>
+        <tr>
+          <td>Coordenadas OE</td>
+          <td>({{ meta.cervical_measurement.oe[0] }}, {{ meta.cervical_measurement.oe[1] }})</td>
+        </tr>
+        {% if meta.cervical_measurement.confidence %}
+        <tr>
+          <td>Confianza</td>
+          <td>
+            <span class="badge {% if meta.cervical_measurement.confidence.score >= 80 %}ok{% elif meta.cervical_measurement.confidence.score >= 55 %}pending{% else %}na{% endif %}">
+              {{ meta.cervical_measurement.confidence.score }}% ({{ meta.cervical_measurement.confidence.label }})
+            </span>
+          </td>
+        </tr>
+        {% endif %}
+        {% if meta.cervical_measurement.calibration and meta.cervical_measurement.calibration.available %}
+        <tr>
+          <td>Calibración</td>
+          <td>{{ "%.4f"|format(meta.cervical_measurement.calibration.mm_per_pixel) }} mm/px</td>
+        </tr>
+        {% endif %}
+        {% endif %}
+        {% endif %}
       </table>
 
       <div class="action-buttons">

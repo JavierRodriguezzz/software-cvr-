@@ -1,0 +1,62 @@
+# CervixAI V2 — Configuration
+# This file controls runtime behavior of the core pipeline.
+# Modify model_backend to switch between segmentation backends.
+
+segmentation:
+  # Options: "unet" | "yolo"  (yolo stub not yet implemented)
+  model_backend: "unet"
+  unet:
+    weights: "models/unet_fugc_best.pth"
+    input_size: [544, 336]   # [width, height]
+    n_channels: 1
+    n_classes: 3
+  yolo:
+    weights: "models/yolo_cervix_best.pt"
+    imgsz: 640
+    conf: 0.25
+
+preprocessing:
+  clahe_clip_limit: 2.0
+  clahe_tile_grid: [8, 8]
+  denoise_h: 7
+  denoise_template_window: 7
+  denoise_search_window: 21
+
+postprocessing:
+  min_component_area: 200       # pixels — smaller regions are discarded
+  morph_kernel_size: 9
+  boundary_smooth_sigma: 1.0
+
+measurement:
+  # Canal axis: equidistant contact band between the two lips
+  gap_dilation_kernel: 3        # kernel size for the zone dilation
+  contact_zone_iters: 30        # dilations bounding how far the axis may extend past the lips
+  contact_band_px: 2.0          # half-width (px) of the equidistant contact band
+  # Skeleton pruning
+  min_branch_length: 20         # pixels — shorter branches are pruned
+  # Anatomical plausibility range for cervical length
+  min_plausible_px: 30
+  max_plausible_px: 2000
+
+calibration:
+  known_mm: 10.0                # mm represented by the scale bar
+  roi_y_fraction: 0.70          # start of ROI from top (0.7 = lower 30%)
+  roi_x_fraction: 0.45          # ROI width fraction from left
+  adaptive_block_size: 31
+  adaptive_c: 10
+  min_aspect_ratio: 3.0         # min width/height for a valid scale bar
+
+confidence:
+  weight_mean_prob: 0.25
+  weight_skeleton_continuity: 0.25
+  weight_anatomical_length: 0.25
+  weight_geometric_consistency: 0.15
+  weight_calibration_bonus: 0.10
+  normal_length_min_mm: 20.0    # clinical normal range
+  normal_length_max_mm: 50.0
+
+debug:
+  enabled: false                 # set to true to dump per-stage artifacts
+  output_dir: "debug_output"     # relative to project root
+  save_images: true              # save PNG files for each stage
+  save_json: true                # save confidence.json + execution_log.json

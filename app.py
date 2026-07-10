@@ -17,8 +17,10 @@ import pydicom
 from PIL import Image
 import numpy as np
 import cv2
-import torch
 from ultralytics import YOLO
+
+from core.pipeline_factory import run_pipeline
+from core.calibration.dicom_scale import pixel_spacing_mm_from_dataset
 
 load_dotenv()
 
@@ -49,8 +51,6 @@ ALL_EXTENSIONS = ALLOWED_EXTENSIONS | IMAGE_EXTENSIONS
 
 # --- Lazy Loading de Modelos Inteligentes ---
 _yolo_model = None
-_unet_model = None
-_unet_device = None
 
 def get_yolo():
     global _yolo_model
@@ -62,27 +62,6 @@ def get_yolo():
         else:
             print("[IA] Warning: Modelo YOLO no encontrado en disco.")
     return _yolo_model
-
-def get_unet():
-    global _unet_model, _unet_device
-    if _unet_model is None:
-        model_path = BASE_DIR / "models" / "unet_fugc_best.pth"
-        if model_path.exists():
-            import importlib.util
-            spec = importlib.util.spec_from_file_location(
-                "unet_model", BASE_DIR / "models" / "unet_model.py"
-            )
-            if spec and spec.loader:
-                mod = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(mod)
-                _unet_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-                _unet_model = mod.UNetSegmenter(model_path, _unet_device)
-                print(f"[IA] U-Net cargado dinámicamente en {_unet_device}")
-            else:
-                print("[IA] Error crucial: No se pudo cargar el módulo estructural de U-Net.")
-        else:
-            print("[IA] Warning: Pesos del modelo U-Net no encontrados.")
-    return _unet_model, _unet_device
 
 # --- Almacenamiento Estático y Variables de Control (En Memoria) ---
 USERS = {
@@ -169,6 +148,112 @@ def record_failed_attempt(username):
             _failed_attempts[username] = [count + 1, first_fail]
     else:
         _failed_attempts[username] = [1, now]
+
+
+def _draw_lip_overlay(original, context):
+    """Draw the U-Net lip overlay (backward-compatible with legacy unet.png)."""
+    vis = original.copy()
+    overlay = np.zeros_like(vis, dtype=np.uint8)
+    ant = context.get_artifact("mask_anterior")
+    post = context.get_artifact("mask_posterior")
+    if ant is not None:
+        overlay[ant > 0] = (0, 0, 255)
+    if post is not None:
+        overlay[post > 0] = (0, 255, 0)
+    vis = cv2.addWeighted(vis, 1.0, overlay, 0.4, 0)
+    for mask_arr, color in [(ant, (0, 0, 255)), (post, (0, 255, 0))]:
+        if mask_arr is not None and mask_arr.sum() > 0:
+            cnts, _ = cv2.findContours(mask_arr.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            cv2.drawContours(vis, cnts, -1, color, 2)
+    return vis
+
+
+def _draw_spline_overlay(original, context):
+    """Draw spline + OI/OE overlay."""
+    vis = original.copy()
+    spline = context.get_artifact("spline_points")
+    if spline is not None and len(spline) > 1:
+        pts = spline[:, ::-1].astype(np.int32)
+        cv2.polylines(vis, [pts], False, (255, 0, 255), 2)
+    meas = context.measurement
+    if meas is not None:
+        cv2.circle(vis, meas.internal_os, 6, (0, 255, 0), -1, cv2.LINE_AA)
+        cv2.putText(vis, "OI", (meas.internal_os[0] - 25, meas.internal_os[1] - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1, cv2.LINE_AA)
+        cv2.circle(vis, meas.external_os, 6, (255, 0, 0), -1, cv2.LINE_AA)
+        cv2.putText(vis, "OE", (meas.external_os[0] + 10, meas.external_os[1] - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1, cv2.LINE_AA)
+    return vis
+
+
+def _draw_measurement_overlay(original, context):
+    """Draw composite measurement overlay (spline + OI/OE + labels)."""
+    vis = _draw_spline_overlay(original, context)
+    meas = context.measurement
+    if meas is not None:
+        cal = context.calibration
+        if cal and cal.is_available and cal.mm_per_pixel:
+            cm = meas.arc_length_px * cal.mm_per_pixel / 10.0
+            txt = f"Length: {cm:.2f} cm ({meas.arc_length_px:.1f} px)"
+        else:
+            txt = f"Length: {meas.arc_length_px:.1f} px"
+        cv2.putText(vis, txt, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
+        conf = context.confidence
+        if conf is not None:
+            cv2.putText(vis, f"Confidence: {conf.score:.1f}% ({conf.label})",
+                        (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1, cv2.LINE_AA)
+    return vis
+
+
+def _save_pipeline_outputs(file_id, original, context):
+    """Persist pipeline visualization layers using viewer-compatible names."""
+    output_dir = app.config["OUTPUT_FOLDER"]
+    layers = {
+        "unet": _draw_lip_overlay(original, context),
+        "spline": _draw_spline_overlay(original, context),
+        "measurement": _draw_measurement_overlay(original, context),
+    }
+    for suffix, image in layers.items():
+        cv2.imwrite(str(output_dir / f"{file_id}_{suffix}.png"), image)
+
+
+def _measurement_payload(context):
+    """Build backward-compatible measurement metadata from PipelineContext."""
+    if context.measurement is None:
+        return None
+    measurement = context.measurement
+    payload = {
+        "oi": [int(measurement.internal_os[0]), int(measurement.internal_os[1])],
+        "oe": [int(measurement.external_os[0]), int(measurement.external_os[1])],
+        "distancia_pixeles": round(float(measurement.arc_length_px), 2),
+        "arc_length_px": round(float(measurement.arc_length_px), 2),
+        "arc_length_mm": (
+            round(float(measurement.arc_length_mm), 2)
+            if measurement.arc_length_mm is not None
+            else None
+        ),
+        "arc_length_cm": (
+            round(float(measurement.arc_length_mm) / 10.0, 2)
+            if measurement.arc_length_mm is not None
+            else None
+        ),
+    }
+    if context.confidence is not None:
+        payload["confidence"] = {
+            "score": round(float(context.confidence.score), 1),
+            "label": context.confidence.label,
+            "components": {
+                key: round(float(value), 3)
+                for key, value in context.confidence.components.items()
+            },
+        }
+    if context.calibration is not None:
+        payload["calibration"] = {
+            "mm_per_pixel": context.calibration.mm_per_pixel,
+            "available": context.calibration.is_available,
+            "method": context.calibration.method,
+        }
+    return payload
 
 # --- Rutas de Autenticación ---
 
@@ -258,6 +343,7 @@ def upload_file():
                 "rows": str(getattr(ds, "Rows", "N/A")),
                 "columns": str(getattr(ds, "Columns", "N/A")),
             })
+            metadata["mm_per_pixel"] = pixel_spacing_mm_from_dataset(ds)
             if hasattr(ds, "pixel_array"):
                 dicom_to_preview(dicom_path, preview_path)
                 metadata["has_preview"] = True
@@ -330,25 +416,38 @@ def analyze_file(file_id):
     except Exception as e:
         print(f"[IA] Error en YOLO: {e}")
 
-    # U-Net Inferencia
+    # U-Net + Measurement Engine (pipeline anatómico)
     unet_ok = False
     try:
-        unet_seg, _ = get_unet()
-        if unet_seg:
-            unet_pred = unet_seg.predict(img_bgr)
-            unet_overlay = img_bgr.copy()
-            for cls_val, color in [(1, (0, 0, 255)), (2, (0, 255, 0))]:
-                mask_cls = (unet_pred == cls_val)
-                overlay = np.zeros_like(img_bgr, dtype=np.uint8)
-                overlay[mask_cls] = color
-                unet_overlay = cv2.addWeighted(unet_overlay, 1, overlay, 0.4, 0)
-                cnts, _ = cv2.findContours(mask_cls.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                cv2.drawContours(unet_overlay, cnts, -1, color, 2)
-            unet_out = app.config["OUTPUT_FOLDER"] / f"{file_id}_unet.png"
-            cv2.imwrite(str(unet_out), unet_overlay)
-            unet_ok = True
+        context = run_pipeline(
+            img_bgr,
+            BASE_DIR,
+            metadata={
+                "file_id": file_id,
+                "original_name": meta["original_name"],
+                "mm_per_pixel": meta.get("mm_per_pixel"),
+            },
+        )
+        _save_pipeline_outputs(file_id, img_bgr, context)
+        unet_ok = context.segmentation is not None
+
+        measurement_payload = _measurement_payload(context)
+        if measurement_payload is not None:
+            meta["cervical_measurement"] = measurement_payload
+            meta["measurement_ok"] = True
+            meta.pop("measurement_error", None)
+        else:
+            meta["measurement_ok"] = False
+            meta["measurement_error"] = (
+                context.errors[-1] if context.errors else
+                "No se pudo reconstruir el eje anatómico del canal"
+            )
+
+        meta["pipeline_summary"] = context.to_summary_dict()
     except Exception as e:
-        print(f"[IA] Error en U-Net: {e}")
+        print(f"[IA] Error en U-Net o medición cervical: {e}")
+        meta["measurement_ok"] = False
+        meta["measurement_error"] = str(e)
 
     # Mosaico de comparación
     try:
@@ -406,7 +505,7 @@ def serve_media(file_id, img_type):
         else:
             return send_from_directory(str(app.config["PREVIEW_FOLDER"]), f"{file_id}.png")
             
-    elif img_type in ("yolo", "unet", "comparison"):
+    elif img_type in ("yolo", "unet", "comparison", "measurement", "spline"):
         path = app.config["OUTPUT_FOLDER"] / f"{file_id}_{img_type}.png"
         if path.exists():
             return send_file(str(path), mimetype="image/png")
@@ -434,11 +533,47 @@ def delete_file(file_id):
         
     (app.config["UPLOAD_FOLDER"] / f"{file_id}{meta['ext']}").unlink(missing_ok=True)
     (app.config["PREVIEW_FOLDER"] / f"{file_id}.png").unlink(missing_ok=True)
-    for suffix in ("yolo", "unet", "comparison"):
+    for suffix in ("yolo", "unet", "comparison", "measurement", "spline"):
         (app.config["OUTPUT_FOLDER"] / f"{file_id}_{suffix}.png").unlink(missing_ok=True)
         
     del DICOM_FILES[file_id]
     return redirect(url_for("dashboard"))
+
+@app.route("/api/measure/<file_id>", methods=["GET"])
+@login_required
+def api_measure_file(file_id):
+    """
+    Endpoint de API para realizar y retornar las mediciones geométricas del canal cervical.
+    """
+    meta = DICOM_FILES.get(file_id)
+    if not meta:
+        return jsonify({"error": "Archivo no encontrado"}), 404
+
+    if not meta["is_image"]:
+        img_path = app.config["PREVIEW_FOLDER"] / f"{file_id}.png"
+    else:
+        img_path = app.config["UPLOAD_FOLDER"] / f"{file_id}{meta['ext']}"
+
+    if not img_path.exists():
+        return jsonify({"error": "Imagen base no encontrada"}), 404
+
+    img_bgr = cv2.imread(str(img_path))
+    if img_bgr is None:
+        return jsonify({"error": "Error al leer la imagen"}), 400
+
+    context = run_pipeline(
+        img_bgr,
+        BASE_DIR,
+        metadata={
+            "file_id": file_id,
+            "api": "measure",
+            "mm_per_pixel": meta.get("mm_per_pixel"),
+        },
+    )
+    payload = _measurement_payload(context)
+    if payload is None:
+        return jsonify({"error": "No se pudo medir el canal cervical", "success": False}), 422
+    return jsonify({"success": True, **payload})
 
 if __name__ == "__main__":
     debug = os.environ.get("FLASK_DEBUG") == "1"
